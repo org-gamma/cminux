@@ -175,4 +175,10 @@ inline std::string read_all() {
 
 } // namespace cmx
 
+using cmx::read_int;
+using cmx::read_double;
+using cmx::read_word;
+using cmx::read_line;
+using cmx::read_all;
+
 #endif // CMINUX_INFN_HPP

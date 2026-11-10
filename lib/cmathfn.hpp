@@ -82,4 +82,22 @@ inline double fmod(double x, double y) { return std::fmod(x, y); }
 
 } // namespace cmx
 
+using cmx::pi;
+using cmx::e;
+using cmx::sin;
+using cmx::cos;
+using cmx::tan;
+using cmx::asin;
+using cmx::acos;
+using cmx::atan;
+using cmx::sqrt;
+using cmx::pow;
+using cmx::exp;
+using cmx::log;
+using cmx::log10;
+using cmx::floor;
+using cmx::ceil;
+using cmx::round;
+using cmx::fmod;
+
 #endif // CMINUX_CMATHFN_HPP

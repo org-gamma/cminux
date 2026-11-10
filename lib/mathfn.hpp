@@ -137,4 +137,9 @@ inline T sqr(T x) {
 
 } // namespace cmx
 
+using cmx::clamp;
+using cmx::lerp;
+using cmx::sign;
+using cmx::sqr;
+
 #endif // CMINUX_MATHFN_HPP

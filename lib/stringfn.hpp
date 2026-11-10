@@ -198,4 +198,16 @@ inline std::string repeat(const std::string& s, int n) {
 
 } // namespace cmx
 
+using cmx::trim;
+using cmx::trim_left;
+using cmx::trim_right;
+using cmx::split;
+using cmx::join;
+using cmx::starts_with;
+using cmx::ends_with;
+using cmx::to_upper;
+using cmx::to_lower;
+using cmx::replace;
+using cmx::repeat;
+
 #endif // CMINUX_STRINGFN_HPP

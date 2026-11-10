@@ -90,4 +90,7 @@ inline T sum(const std::vector<T>& v) {
 
 } // namespace cmx
 
+using cmx::range;
+using cmx::sum;
+
 #endif // CMINUX_VECTORFN_HPP
