@@ -13,6 +13,7 @@
 #define CMINUX_OUTFN_HPP
 
 #include <cstdio>
+#include <cstdarg>
 #include <string>
 #include <string_view>
 #include <iostream>
