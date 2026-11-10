@@ -12,7 +12,7 @@ namespace {
 
 void print_usage(std::ostream& out) {
     out <<
-        "cminux v1.0.0 — a simpler C++ that compiles to native executables\n"
+        "cminux v1.1.0 - a simpler C++ that compiles to native executables\n"
         "\n"
         "usage: cminux <file.cmx> [options]\n"
         "\n"
