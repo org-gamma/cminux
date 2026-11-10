@@ -30,3 +30,5 @@ std::string emit_cpp(const std::vector<Token>& tokens,
                      const EmitOptions& opts);
 
 } // namespace cmx
+
+#endif // CMINUX_EMITTER_HPP

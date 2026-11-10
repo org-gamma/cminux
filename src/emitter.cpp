@@ -65,8 +65,6 @@ bool needs_space(const Token& prev, const Token& cur) {
     return false;
 }
 
-} // namespace
-
 std::string emit_cpp(const std::vector<Token>& tokens,
                      const EmitOptions& opts) {
     std::ostringstream out;
@@ -129,4 +127,6 @@ std::string emit_cpp(const std::vector<Token>& tokens,
 
     if (!at_line_start) out << '\n';
     return out.str();
+}
+
 }

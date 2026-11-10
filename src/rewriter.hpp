@@ -40,3 +40,5 @@ bool rewrite(const std::vector<Token>& in,
              RewriteError& err);
 
 } // namespace cmx
+
+#endif // CMINUX_REWRITER_HPP
