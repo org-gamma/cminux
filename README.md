@@ -19,22 +19,6 @@ The compiler is build/cminux(.exe). The library header is lib/outfn.hpp.
     cminux hello.cmx -o hello.exe
     hello.exe
 
-## The language
-
-Nine rules. Everything else is C++ as-is.
-
-| cminux                      | emits                                       |
-|-----------------------------|---------------------------------------------|
-| import ["a.hpp", "b.hpp"]   | #include "a.hpp" / #include "b.hpp"         |
-| func f() -> T { ... }       | T f() { ... }                               |
-| func f() { ... }            | void f() { ... }                            |
-| render e;                   | return e;                                   |
-| nil                         | nullptr                                     |
-| let x = e;                  | const auto x = e;                           |
-| var x = e;                  | auto x = e;                                 |
-| print(...)                  | cmx::print(...)   (from outfn.hpp)          |
-| println(...)                | cmx::println(...) (from outfn.hpp)          |
-
 ## Example
 
     import ["outfn.hpp"]
