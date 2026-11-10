@@ -1,11 +1,27 @@
 // src/rewriter.cpp
-// The one and only rewrite pass in cminux v1.0.0.
+// The one and only rewrite pass in cminux.
 //
 // Structure: walk the input tokens once. Most rules are pure substitutions
-// on the current token. One rule — `func` — performs a balanced-bracket
-// scan to relocate a trailing return type (`-> T`) to the front of the
-// declaration. Every rule remains type-agnostic: the rewriter copies type
-// tokens without interpreting them.
+// on the current token. Five rules perform a forward scan:
+//
+//   func      balanced-paren scan of the parameter list, optional `->` scan
+//   if        balanced scan of the condition, with or without parens
+//   while     balanced scan of the condition, with or without parens
+//   for-in    balanced scan of the container expression
+//   loop      no scan; emits `while (true)` and lets the body copy
+//
+// Every rule is type-agnostic: the rewriter copies tokens without
+// interpreting them. It never parses expressions, never resolves names,
+// never checks types.
+//
+// New in this version:
+//   - and / or / not as aliases for && / || / !
+//   - loop { ... } as shorthand for while (true) { ... }
+//   - if and while without parentheses
+//   - for x in v { ... } as shorthand for the C++ range-for
+//
+// All additions are local and type-agnostic. The design rules from 1.0.0
+// hold.
 
 #include "rewriter.hpp"
 #include <cstring>
@@ -46,7 +62,10 @@ void emit_synthetic_include(std::vector<Token>& out, const Token& src, const std
     emit_punct(out, src, "\"");
 }
 
+// ---------------------------------------------------------------------------
 // import [ "a", "b" ]  ->  #include "a"\n#include "b"
+// ---------------------------------------------------------------------------
+
 bool try_import(Cursor& c, std::vector<Token>& out, RewriteError& err) {
     const Token& kw = c.cur();
     c.advance(); // import
@@ -88,22 +107,14 @@ bool try_import(Cursor& c, std::vector<Token>& out, RewriteError& err) {
     return true;
 }
 
+// ---------------------------------------------------------------------------
 // func <name> ( <params> ) [ -> <type> ] <body>
-//   ->   <type> <name> ( <params> ) <body>       (with ->)
-//   ->   void   <name> ( <params> ) <body>       (without ->)
-//
-// This rule performs a balanced-parenthesis scan over the parameter list,
-// then an optional return-type scan over the tokens after `->` up to the
-// body's opening `{`. It copies tokens verbatim; it never interprets types.
-//
-// On malformed input (missing name, missing paren, missing `{`), it fills
-// `err` and returns false. The driver aborts. We do not attempt recovery:
-// the user should never see this from valid cminux source.
-bool try_func(Cursor& c, std::vector<Token>& out, RewriteError& err) {
-    const Token& kw = c.cur();       // the `func` keyword
-    c.advance();                     // consume func
+// ---------------------------------------------------------------------------
 
-    // ---- 1. Function name ------------------------------------------------
+bool try_func(Cursor& c, std::vector<Token>& out, RewriteError& err) {
+    const Token& kw = c.cur();
+    c.advance(); // func
+
     if (!c.cur().is(TokKind::Ident)) {
         err.message = "expected function name after 'func'";
         err.line = kw.line; err.col = kw.col;
@@ -112,7 +123,6 @@ bool try_func(Cursor& c, std::vector<Token>& out, RewriteError& err) {
     Token name_tok = c.cur();
     c.advance();
 
-    // ---- 2. Parameter list — scan with balanced parens -------------------
     if (!c.cur().is(TokKind::Punct, "(")) {
         err.message = "expected '(' after function name";
         err.line = c.cur().line; err.col = c.cur().col;
@@ -137,15 +147,11 @@ bool try_func(Cursor& c, std::vector<Token>& out, RewriteError& err) {
         return false;
     }
 
-    // ---- 3. Optional `-> Type` ------------------------------------------
     std::vector<Token> return_type;
     bool has_arrow = false;
     if (c.cur().is(TokKind::Punct, "->")) {
         has_arrow = true;
-        c.advance(); // ->
-        // Read tokens until the body's opening `{`. We do not cross `;`
-        // because that would mean a declaration without a body, which
-        // cminux v1.0.0 does not have (no forward declarations).
+        c.advance();
         while (!c.at_end()) {
             const Token& t = c.cur();
             if (t.is(TokKind::Punct, "{")) break;
@@ -164,24 +170,237 @@ bool try_func(Cursor& c, std::vector<Token>& out, RewriteError& err) {
         }
     }
 
-    // ---- 4. Emit: <type> <name> ( <params> ) ----------------------------
-    // No arrow: synthesize `void` as the return type.
     if (!has_arrow) {
         out.emplace_back(TokKind::Ident, "void", kw.line, kw.col);
-        out.emplace_back(TokKind::Punct, " ", kw.line, kw.col); // spacer
+        out.emplace_back(TokKind::Punct, " ", kw.line, kw.col);
     } else {
         for (const auto& t : return_type) out.push_back(t);
-        out.emplace_back(TokKind::Punct, " ", kw.line, kw.col); // spacer
+        out.emplace_back(TokKind::Punct, " ", kw.line, kw.col);
     }
 
     out.push_back(name_tok);
-    // The parameter vector already includes the opening `(` and closing `)`.
-    // But we want no space between name and `(` — the emitter's needs_space
-    // rule handles that (word followed by `(` -> no space).
     for (const auto& t : params) out.push_back(t);
 
-    // The caller's main loop continues from c.cur(), which is now `{`
-    // (or `;` on the no-body error path, already returned).
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// if <cond> <body>   ->  if ( <cond> ) <body>
+//
+// If the token immediately after `if` is `(`, the existing parens are
+// preserved and only the body is copied. Otherwise the condition is
+// wrapped in synthetic parens.
+//
+// The scan for the condition ends at the first `{` at depth 0. Parens,
+// brackets, and braces inside the condition (function calls, initializer
+// lists, etc.) are tracked so that a `{` inside a nested block does not
+// prematurely end the scan. A `;` at depth 0 means the user wrote a
+// statement without a body, which is a C++ error — but it is not a
+// cminux error, so we copy it through and let the C++ compiler report it.
+// ---------------------------------------------------------------------------
+
+bool try_if(Cursor& c, std::vector<Token>& out, RewriteError& err) {
+    (void)err;
+    const Token& kw = c.cur();       // `if`
+    c.advance();
+
+    bool has_paren = c.cur().is(TokKind::Punct, "(");
+
+    emit_ident(out, kw, "if");
+
+    if (has_paren) {
+        // Copy the existing parenthesized condition. Balanced scan.
+        int depth = 0;
+        while (!c.at_end()) {
+            const Token& t = c.cur();
+            out.push_back(t);
+            if (t.is(TokKind::Punct, "(")) ++depth;
+            else if (t.is(TokKind::Punct, ")")) {
+                --depth;
+                c.advance();
+                if (depth == 0) break;
+                continue;
+            }
+            c.advance();
+        }
+        return true;
+    }
+
+    // No parens: wrap the condition.
+    emit_punct(out, kw, "(");
+    int paren = 0, brace = 0, bracket = 0;
+    while (!c.at_end()) {
+        const Token& t = c.cur();
+        if (t.is(TokKind::Punct, "{")) {
+            if (paren == 0 && brace == 0 && bracket == 0) break;
+            ++brace;
+        } else if (t.is(TokKind::Punct, "}")) {
+            if (brace > 0) --brace;
+        } else if (t.is(TokKind::Punct, "(")) ++paren;
+        else if (t.is(TokKind::Punct, ")")) { if (paren > 0) --paren; }
+        else if (t.is(TokKind::Punct, "[")) ++bracket;
+        else if (t.is(TokKind::Punct, "]")) { if (bracket > 0) --bracket; }
+
+        if (t.is(TokKind::Punct, ";") && paren == 0 && brace == 0 && bracket == 0) {
+            // No body; copy through and let C++ report the error.
+            break;
+        }
+
+        out.push_back(t);
+        c.advance();
+    }
+    emit_punct(out, kw, ")");
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// while <cond> <body>  ->  while ( <cond> ) <body>
+//
+// Same structure as try_if. The scan and wrapping logic are identical;
+// the only difference is the keyword that is emitted.
+// ---------------------------------------------------------------------------
+
+bool try_while(Cursor& c, std::vector<Token>& out, RewriteError& err) {
+    (void)err;
+    const Token& kw = c.cur();       // `while`
+    c.advance();
+
+    bool has_paren = c.cur().is(TokKind::Punct, "(");
+
+    emit_ident(out, kw, "while");
+
+    if (has_paren) {
+        int depth = 0;
+        while (!c.at_end()) {
+            const Token& t = c.cur();
+            out.push_back(t);
+            if (t.is(TokKind::Punct, "(")) ++depth;
+            else if (t.is(TokKind::Punct, ")")) {
+                --depth;
+                c.advance();
+                if (depth == 0) break;
+                continue;
+            }
+            c.advance();
+        }
+        return true;
+    }
+
+    emit_punct(out, kw, "(");
+    int paren = 0, brace = 0, bracket = 0;
+    while (!c.at_end()) {
+        const Token& t = c.cur();
+        if (t.is(TokKind::Punct, "{")) {
+            if (paren == 0 && brace == 0 && bracket == 0) break;
+            ++brace;
+        } else if (t.is(TokKind::Punct, "}")) {
+            if (brace > 0) --brace;
+        } else if (t.is(TokKind::Punct, "(")) ++paren;
+        else if (t.is(TokKind::Punct, ")")) { if (paren > 0) --paren; }
+        else if (t.is(TokKind::Punct, "[")) ++bracket;
+        else if (t.is(TokKind::Punct, "]")) { if (bracket > 0) --bracket; }
+
+        if (t.is(TokKind::Punct, ";") && paren == 0 && brace == 0 && bracket == 0) {
+            break;
+        }
+
+        out.push_back(t);
+        c.advance();
+    }
+    emit_punct(out, kw, ")");
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// loop <body>  ->  while ( true ) <body>
+//
+// `loop` is a fixed substitution. It takes no condition; the body follows
+// immediately. Break out with `break` (which passes through as a C++
+// keyword). There is no `loop <cond>` form; use `while` for that.
+// ---------------------------------------------------------------------------
+
+void emit_loop(Cursor& c, std::vector<Token>& out) {
+    const Token& kw = c.cur();
+    c.advance();
+    emit_ident(out, kw, "while");
+    emit_punct(out, kw, "(");
+    emit_ident(out, kw, "true");
+    emit_punct(out, kw, ")");
+}
+
+// ---------------------------------------------------------------------------
+// for <var> in <expr> <body>  ->  for ( auto& <var> : <expr> ) <body>
+//
+// The for-in form scans from `in` to the opening `{` of the body, wrapping
+// the loop variable and the container expression in the C++ range-for
+// form. The loop variable is emitted by reference (`auto&`), so
+// modifications inside the loop affect the container. To iterate by
+// value, write the C++ range-for directly: `for (auto x : v)`.
+//
+// The container expression is copied verbatim with balanced-paren and
+// balanced-bracket tracking. A `;` at depth 0 means the user wrote a
+// C-style for, which cminux does not rewrite; the `for` keyword is
+// preserved and the rest of the statement is copied as-is. That is
+// intentional: cminux does not have a C-style for, but it does not
+// break existing C++ for loops that appear in .cmx source either.
+// ---------------------------------------------------------------------------
+
+bool try_for(Cursor& c, std::vector<Token>& out, RewriteError& err) {
+    const Token& kw = c.cur();       // `for`
+    c.advance();
+
+    // Look ahead: is this `for x in ...` or a C-style `for (...)`?
+    // The for-in form has an identifier followed by the `in` keyword
+    // before any `(` or `;`. The C-style form starts with `(`.
+    if (!c.cur().is(TokKind::Ident) || !c.peek(1).is(TokKind::Keyword, "in")) {
+        // C-style or malformed. Emit `for` and let the rest pass through.
+        emit_ident(out, kw, "for");
+        return true;
+    }
+
+    Token var = c.cur();
+    c.advance();                     // var
+    c.advance();                     // in
+
+    // Scan the container expression until the opening `{` of the body.
+    std::vector<Token> container;
+    int paren = 0, bracket = 0;
+    while (!c.at_end()) {
+        const Token& t = c.cur();
+        if (t.is(TokKind::Punct, "{") && paren == 0 && bracket == 0) break;
+        if (t.is(TokKind::Punct, ";") && paren == 0 && bracket == 0) {
+            err.message = "expected '{' after for-in container expression";
+            err.line = t.line; err.col = t.col;
+            return false;
+        }
+        if (t.is(TokKind::Punct, "(")) ++paren;
+        else if (t.is(TokKind::Punct, ")")) { if (paren > 0) --paren; }
+        else if (t.is(TokKind::Punct, "[")) ++bracket;
+        else if (t.is(TokKind::Punct, "]")) { if (bracket > 0) --bracket; }
+
+        container.push_back(t);
+        c.advance();
+    }
+
+    if (container.empty()) {
+        err.message = "expected container expression after 'in'";
+        err.line = kw.line; err.col = kw.col;
+        return false;
+    }
+
+    // Emit: for ( auto& <var> : <container> )
+    emit_ident(out, kw, "for");
+    emit_punct(out, kw, "(");
+    emit_ident(out, kw, "auto");
+    emit_punct(out, kw, "&");
+    out.emplace_back(TokKind::Punct, " ", kw.line, kw.col);
+    out.push_back(var);
+    emit_punct(out, kw, " ");
+    emit_punct(out, kw, ":");
+    emit_punct(out, kw, " ");
+    for (const auto& t : container) out.push_back(t);
+    emit_punct(out, kw, ")");
+
     return true;
 }
 
@@ -206,8 +425,46 @@ bool rewrite(const std::vector<Token>& in,
             continue;
         }
 
+        if (t.is(TokKind::Keyword, "if")) {
+            if (!try_if(c, out, err)) return false;
+            continue;
+        }
+
+        if (t.is(TokKind::Keyword, "while")) {
+            if (!try_while(c, out, err)) return false;
+            continue;
+        }
+
+        if (t.is(TokKind::Keyword, "for")) {
+            if (!try_for(c, out, err)) return false;
+            continue;
+        }
+
+        if (t.is(TokKind::Keyword, "loop")) {
+            emit_loop(c, out);
+            continue;
+        }
+
         if (t.is(TokKind::Keyword, "render")) {
             emit_ident(out, t, "return");
+            c.advance();
+            continue;
+        }
+
+        if (t.is(TokKind::Keyword, "and")) {
+            emit_punct(out, t, "&&");
+            c.advance();
+            continue;
+        }
+
+        if (t.is(TokKind::Keyword, "or")) {
+            emit_punct(out, t, "||");
+            c.advance();
+            continue;
+        }
+
+        if (t.is(TokKind::Keyword, "not")) {
+            emit_punct(out, t, "!");
             c.advance();
             continue;
         }
