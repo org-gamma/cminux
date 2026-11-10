@@ -14,12 +14,40 @@ rem Environment:
 rem   CMAKE_BUILD_TYPE   Release (default) or Debug
 rem   KEEP=1             do not clean the build directory before building
 rem   CMAKE_JOBS         number of parallel jobs (default: 4)
+rem   CMX_GENERATOR      override the CMake generator (e.g. "MinGW Makefiles")
+rem
+rem Generator selection (in order):
+rem   1. CMX_GENERATOR if set
+rem   2. "MinGW Makefiles" if g++ is on PATH
+rem   3. NMake Makefiles if nmake is on PATH
+rem   4. default (let CMake choose; will fail if no toolchain is available)
 
 cd /d "%~dp0"
 
 set "BUILD_DIR=build"
 if not defined CMAKE_BUILD_TYPE set "CMAKE_BUILD_TYPE=Release"
 if not defined CMAKE_JOBS set "CMAKE_JOBS=4"
+
+rem ---------------------------------------------------------------------------
+rem 0. Pick a CMake generator.
+rem ---------------------------------------------------------------------------
+if not defined CMX_GENERATOR (
+    where g++ >nul 2>nul
+    if not errorlevel 1 (
+        set "CMX_GENERATOR=MinGW Makefiles"
+    ) else (
+        where nmake >nul 2>nul
+        if not errorlevel 1 (
+            set "CMX_GENERATOR=NMake Makefiles"
+        )
+    )
+)
+
+if defined CMX_GENERATOR (
+    echo run.bat: using generator "%CMX_GENERATOR%"
+) else (
+    echo run.bat: no generator auto-detected, letting CMake choose
+)
 
 rem ---------------------------------------------------------------------------
 rem 1. Clean the build directory unless KEEP=1
@@ -46,10 +74,18 @@ if not exist "%BUILD_DIR%" (
 rem ---------------------------------------------------------------------------
 rem 2. Configure
 rem ---------------------------------------------------------------------------
-echo run.bat: cmake -S . -B %BUILD_DIR% -DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE%
-cmake -S . -B "%BUILD_DIR%" -DCMAKE_BUILD_TYPE="%CMAKE_BUILD_TYPE%"
+if defined CMX_GENERATOR (
+    echo run.bat: cmake -S . -B %BUILD_DIR% -G "%CMX_GENERATOR%" -DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE%
+    cmake -S . -B "%BUILD_DIR%" -G "%CMX_GENERATOR%" -DCMAKE_BUILD_TYPE="%CMAKE_BUILD_TYPE%"
+) else (
+    echo run.bat: cmake -S . -B %BUILD_DIR% -DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE%
+    cmake -S . -B "%BUILD_DIR%" -DCMAKE_BUILD_TYPE="%CMAKE_BUILD_TYPE%"
+)
 if errorlevel 1 (
     echo run.bat: cmake configure failed >&2
+    echo run.bat: if you do not have MSVC or MinGW installed, install one of them:
+    echo run.bat:   - MinGW-w64 (https://www.mingw-w64.org/downloads/)
+    echo run.bat:   - Visual Studio Build Tools (https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)
     exit /b 1
 )
 
@@ -66,7 +102,7 @@ if errorlevel 1 (
 rem ---------------------------------------------------------------------------
 rem 4. Verify the binary exists, in either layout:
 rem
-rem    build\cminux.exe                  (Ninja, Make, single-config)
+rem    build\cminux.exe                  (Ninja, MinGW, NMake, single-config)
 rem    build\<Config>\cminux.exe         (MSVC, Xcode, multi-config)
 rem ---------------------------------------------------------------------------
 set "CMX="
