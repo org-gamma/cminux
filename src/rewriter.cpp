@@ -207,7 +207,7 @@ bool rewrite(const std::vector<Token>& in,
         }
 
         if (t.is(TokKind::Keyword, "render")) {
-            emit_punct(out, t, "return");
+            emit_ident(out, t, "return");
             c.advance();
             continue;
         }
@@ -220,13 +220,13 @@ bool rewrite(const std::vector<Token>& in,
 
         if (t.is(TokKind::Keyword, "let")) {
             emit_ident(out, t, "const");
-            emit_punct(out, t, "auto");
+            emit_ident(out, t, "auto");
             c.advance();
             continue;
         }
 
         if (t.is(TokKind::Keyword, "var")) {
-            emit_punct(out, t, "auto");
+            emit_ident(out, t, "auto");
             c.advance();
             continue;
         }
