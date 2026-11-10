@@ -1,0 +1,12 @@
+import ["outfn.hpp"]
+func main() -> int {
+    let greeting = "hello";
+    var count = 0;
+    var p = nil;
+    if p == nil {
+        count = count + 1;
+    }
+    println(greeting);
+    println(count);
+    render 0;
+}

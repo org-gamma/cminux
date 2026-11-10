@@ -1,0 +1,25 @@
+# build artifacts
+/build/
+*.exe
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.pdb
+*.ilk
+*.exp
+
+# cminux transpiled output
+*.cmx.cpp
+*.actual.stdout
+
+# visual studio
+.vs/
+*.vcxproj.user
+CMakeSettings.json
+
+# IDE
+.vscode/
+.idea/
+*.swp

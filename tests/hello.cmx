@@ -1,0 +1,6 @@
+import ["outfn.hpp"]
+func main() -> int {
+    print("There is no newline at the end! ");
+    println("There's a newline!");
+    render 0;
+}

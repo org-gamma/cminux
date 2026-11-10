@@ -1,0 +1,8 @@
+import ["outfn.hpp"]
+func add(int a, int b) -> int {
+    render a + b;
+}
+func main() -> int {
+    println(add(40, 2));
+    render 0;
+}

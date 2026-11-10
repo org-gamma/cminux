@@ -1,0 +1,5 @@
+import ["outfn.hpp", "extra.hpp"]
+func main() -> int {
+    println("multi-import");
+    render 0;
+}
