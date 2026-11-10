@@ -1,0 +1,79 @@
+name: Documentation issue
+description: Something in README.md or docs/*.md is wrong, unclear, or missing.
+title: "docs: "
+labels: ["documentation", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Documentation is frozen between major versions (see `VERSIONING.md`).
+        A fix to a prose typo can land on any release; a substantive change
+        — new sections, rewritten explanations — is a major release and
+        requires discussion first.
+
+        If you are reporting a typo, the fix can be a one-line pull request.
+        If you are reporting a content issue, this template is the right place.
+
+  - type: dropdown
+    id: file
+    attributes:
+      label: Which file?
+      options:
+        - README.md
+        - docs/language-reference.md
+        - docs/translation-rules.md
+        - docs/output-library.md
+        - docs/error-messages.md
+        - docs/internals.md
+        - CONTRIBUTING.md
+        - VERSIONING.md
+        - SECURITY.md
+        - Other (describe in "Details")
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Section or line
+      description: The section heading, or the exact sentence that is wrong.
+      placeholder: 'Section "6.4 Rule: render", the sentence about render;'
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong?
+      description: |
+        Quote the current text and explain what is wrong with it. If it is
+        factually incorrect, describe what the correct behavior is. If it is
+        unclear, explain what confused you. "I don't understand this
+        section" is a valid problem statement.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested
+    attributes:
+      label: Suggested replacement text (optional)
+      description: If you have a specific rewrite in mind, paste it here.
+      render: markdown
+    validations:
+      required: false
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Is this a typo or a content issue?
+      description: |
+        Typos can be fixed on any release. Content issues require a major
+        release. See VERSIONING.md.
+      options:
+        - Typo (prose, not in a code example)
+        - Typo in a code example (this is a major release, not a typo fix)
+        - Content issue (major release)
+        - Unclear
+    validations:
+      required: true

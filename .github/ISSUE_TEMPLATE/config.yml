@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or design discussion
+    url: https://github.com/org-gamma/cminux/discussions
+    about: Ask a question or propose a change before opening an issue.
+  - name: Security vulnerability
+    url: https://github.com/org-gamma/cminux/security/policy
+    about: Do not report security issues here. See SECURITY.md.

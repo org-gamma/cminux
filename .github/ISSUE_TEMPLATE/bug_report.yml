@@ -1,0 +1,119 @@
+name: Bug report
+description: Something in cminux behaves differently from what the docs say.
+title: "bug: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Before you continue, please check:
+
+        - The behavior is different from what `README.md` or `docs/*.md` say.
+          If the docs say it does what it does, it is not a bug — it is a
+          feature request or a doc issue.
+        - You are on the current version of cminux (`cminux --version`).
+        - The issue is in cminux, not in the C++ compiler. If the generated
+          `.cpp` file fails to compile under one compiler but compiles under
+          another, that is usually a compiler difference, not a cminux bug.
+
+  - type: input
+    id: version
+    attributes:
+      label: cminux version
+      description: Output of `cminux --version`.
+      placeholder: "cminux 1.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - Linux
+        - macOS
+        - Other (describe in the "Additional context" field)
+    validations:
+      required: true
+
+  - type: input
+    id: compiler
+    attributes:
+      label: C++ compiler
+      description: |
+        The compiler cminux is invoking. Run `cminux --verbose` and look at
+        the command it prints, or check `echo %CMX_CC%` (Windows) /
+        `echo $CMX_CC` (Unix). Include the version if you know it.
+      placeholder: "clang++ 17.0.6, or g++ 13.2.0, or cl.exe 19.38"
+    validations:
+      required: true
+
+  - type: textarea
+    id: input
+    attributes:
+      label: Smallest .cmx file that reproduces the bug
+      description: |
+        This is the most important field. Reduce your input as far as you
+        can — if three lines reproduce the bug, do not send three hundred.
+        Paste the file contents here.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: The exact command you ran
+      description: Including all flags, the input path, and `--keep` if you used it.
+      render: shell
+      placeholder: "cminux tests/repro.cmx -o repro.exe --keep"
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened
+      description: |
+        Paste the exact error message, or the exact wrong output. If the
+        error came from the C++ compiler, paste the compiler's message
+        verbatim — do not paraphrase.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+      description: |
+        If the docs describe the correct behavior, quote the sentence here
+        and say which file it is from. That makes the issue a one-line fix
+        to classify.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: generated
+    attributes:
+      label: Generated .cmx.cpp (if the bug involves C++ compile errors)
+      description: |
+        Run with `--keep`, then paste the contents of the generated
+        `.cmx.cpp` file. This is the input to the C++ compiler, and seeing
+        it usually makes the bug obvious. Leave blank if the bug is not
+        about C++ compilation.
+      render: cpp
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: |
+        Anything else that helps. Other compilers you tried, other versions
+        of cminux, anything unusual about your setup.
+    validations:
+      required: false

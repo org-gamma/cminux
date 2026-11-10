@@ -1,0 +1,112 @@
+name: Feature request
+description: Propose a change to cminux. Read CONTRIBUTING.md section 3 first.
+title: "feature: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        cminux is small on purpose. Most feature requests are declined, and
+        that is not a judgment on the request — it is a judgment on whether
+        the change fits the language.
+
+        Before continuing, read `CONTRIBUTING.md` section 3 ("What
+        contributions are not welcome"). If your request is on that list, it
+        will be closed without discussion.
+
+        Also read `VERSIONING.md`. If your change makes any sentence in
+        `README.md` or `docs/*.md` false, it is a **major** release and
+        requires a plan for the next major version, not a single pull
+        request.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: |
+        Describe the problem, not the solution. "I want to write loops more
+        concisely" is a problem. "Add a `for..in` keyword" is a solution.
+        The problem statement is what determines whether a solution belongs
+        in cminux.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What change are you proposing?
+      description: |
+        Be specific. If it is a new rule, show the input and the expected
+        output, character for character. If it is a new flag, show the flag
+        and its behavior.
+      render: text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: release_kind
+    attributes:
+      label: What kind of release would this require?
+      description: |
+        See VERSIONING.md for the definition of each kind. If you are not
+        sure, say "unsure" — the maintainer will classify it during review.
+      options:
+        - Major (changes the documented surface)
+        - Minor (adds a capability within the documented surface)
+        - Patch (fixes a bug)
+        - Unsure
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: design_rules
+    attributes:
+      label: Design rules
+      description: |
+        Every proposed change must satisfy all four rules. Check each box
+        only if you have verified the change satisfies it. If any box is
+        unchecked, explain why in the "Additional context" field.
+      options:
+        - label: |
+            Rule 1 — The change can be implemented as a local token
+            substitution in the rewriter. It does not require parsing,
+            an AST, name resolution, or type checking.
+          required: true
+        - label: |
+            Rule 2 — The change adds no semantics. cminux still does not
+            define what values mean; the C++ compiler and C++ standard
+            library do.
+          required: true
+        - label: |
+            Rule 3 — Any program expressible with this change is also
+            expressible in C++. The change adds spelling, not expressiveness.
+          required: true
+        - label: |
+            Rule 4 — I have read VERSIONING.md and I understand whether this
+            change requires doc updates.
+          required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: |
+        How do you solve this problem today, in cminux or in C++ directly?
+        If the answer is "I write the C++ form," that is a valid answer and
+        it is worth stating — it tells the maintainer how much the change
+        actually saves.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: |
+        Anything else. Link to prior discussion if there is any, to related
+        languages if the proposal is borrowed from one, or to the specific
+        doc sentence this change would make false.
+    validations:
+      required: false
