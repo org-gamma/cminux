@@ -81,11 +81,12 @@ if defined CMX_GENERATOR (
     echo run.bat: cmake -S . -B %BUILD_DIR% -DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE%
     cmake -S . -B "%BUILD_DIR%" -DCMAKE_BUILD_TYPE="%CMAKE_BUILD_TYPE%"
 )
-if errorlevel 1 (
-    echo run.bat: cmake configure failed >&2
+set "CFG_RC=!ERRORLEVEL!"
+if not "!CFG_RC!"=="0" (
+    echo run.bat: cmake configure failed ^(exit !CFG_RC!^) >&2
     echo run.bat: if you do not have MSVC or MinGW installed, install one of them:
-    echo run.bat:   - MinGW-w64 (https://www.mingw-w64.org/downloads/)
-    echo run.bat:   - Visual Studio Build Tools (https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)
+    echo run.bat:   - MinGW-w64 ^(https://www.mingw-w64.org/downloads/^)
+    echo run.bat:   - Visual Studio Build Tools ^(https://visualstudio.microsoft.com/downloads/^)
     exit /b 1
 )
 
@@ -94,8 +95,9 @@ rem 3. Build
 rem ---------------------------------------------------------------------------
 echo run.bat: cmake --build %BUILD_DIR% --config %CMAKE_BUILD_TYPE% --parallel %CMAKE_JOBS%
 cmake --build "%BUILD_DIR%" --config "%CMAKE_BUILD_TYPE%" --parallel "%CMAKE_JOBS%"
-if errorlevel 1 (
-    echo run.bat: cmake build failed >&2
+set "BLD_RC=!ERRORLEVEL!"
+if not "!BLD_RC!"=="0" (
+    echo run.bat: cmake build failed ^(exit !BLD_RC!^) >&2
     exit /b 1
 )
 
