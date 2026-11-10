@@ -131,7 +131,7 @@ for bugs that anyone can see without risk; security issues are not.
 
 Report privately by email to:
 
-    security@<project-domain>
+    security@gamma.org
 
 If the project does not have a dedicated security email, use the maintainer
 email listed in the repository's commit history. If you cannot find an
