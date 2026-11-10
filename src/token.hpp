@@ -1,5 +1,5 @@
 // src/token.hpp
-// The complete token vocabulary of cminux v0.1.
+// The complete token vocabulary of cminux.
 //
 // A token is either a keyword, an identifier, a string literal, a number,
 // or a punctuation mark. There are no other token kinds. If a new construct
@@ -17,7 +17,7 @@ namespace cmx {
 enum class TokKind : uint8_t {
     End,        // end of input
     Newline,    // preserved so line structure survives the rewrite
-    Keyword,    // one of the reserved words in keywords() below
+    Keyword,    // one of the reserved words in is_cminux_keyword() below
     Ident,      // [A-Za-z_][A-Za-z0-9_]*
     String,     // "..." — the value excludes the surrounding quotes
     Number,     // 123, 4.5
@@ -40,9 +40,17 @@ struct Token {
     }
 };
 
-// The keyword set. Every reserved word in cminux v0.1.
-// Adding to this list is a breaking change for cminux source files that
-// used the word as an identifier. Do not extend it lightly.
+// The keyword set. Every reserved word in cminux.
+//
+// This list is the only thing that distinguishes a Keyword token from an
+// Ident token during tokenization. Everything in this list is reserved:
+// it cannot be used as an identifier in cminux source. Everything not in
+// this list is an identifier, even if it is a C++ keyword (`class`, `new`,
+// `return`, `do`, etc.) — those pass through to C++ and the C++ compiler
+// rejects them if they are used in a place where C++ requires an identifier.
+//
+// Adding a word to this list is a breaking change for any cminux source
+// that used the word as an identifier. Do not extend it lightly.
 inline bool is_cminux_keyword(const std::string& s) {
     return s == "import"
         || s == "func"
@@ -53,6 +61,8 @@ inline bool is_cminux_keyword(const std::string& s) {
         || s == "else"
         || s == "while"
         || s == "for"
+        || s == "in"          // for-in loop: `for x in v`
+        || s == "loop"        // infinite loop: `loop { ... }`
         || s == "return"
         || s == "int"
         || s == "long"
@@ -66,7 +76,10 @@ inline bool is_cminux_keyword(const std::string& s) {
         || s == "false"
         || s == "nil"
         || s == "let"
-        || s == "var";
+        || s == "var"
+        || s == "and"         // alias for &&
+        || s == "or"          // alias for ||
+        || s == "not";        // alias for !
 }
 
 } // namespace cmx
